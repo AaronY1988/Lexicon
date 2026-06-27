@@ -146,7 +146,6 @@ These APIs are not in the public SDK, so **this app is not suitable for the Mac 
 - [ ] Recent ⇄ Favorites toggle in the results footer
 - [ ] Wikipedia rich preview
 - [ ] Export favorites to Anki/CSV
-- [ ] iCloud sync of favorites
 - [ ] Inline thesaurus suggestions
 
 ## Contributing
