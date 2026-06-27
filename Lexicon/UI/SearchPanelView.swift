@@ -28,6 +28,10 @@ final class SearchViewModel: ObservableObject {
 
     /// Live type-ahead matches — words that match or partly match `query`.
     @Published private(set) var suggestions: [String] = []
+    /// `true` when `suggestions` are spelling corrections for a misspelled word
+    /// (no prefix match was found) rather than ordinary matches. Drives the
+    /// "did you mean" header in the match list.
+    @Published private(set) var suggestionsAreCorrections: Bool = false
     /// Index into `suggestions` of the word whose definition is on screen.
     /// `-1` when there is nothing highlighted.
     @Published var highlightedIndex: Int = -1
@@ -106,6 +110,7 @@ final class SearchViewModel: ObservableObject {
             lookupTask?.cancel()
             glossTask?.cancel()
             suggestions = []
+            suggestionsAreCorrections = false
             highlightedIndex = -1
             results = []
             shownWord = ""
@@ -115,9 +120,12 @@ final class SearchViewModel: ObservableObject {
         }
 
         // 1. Suggestion list — fast and bounded, so it's fine on the main actor
-        //    and the list updates instantly as you type.
-        let matches = dictionaryService.suggestions(for: trimmed)
+        //    and the list updates instantly as you type. Falls back to spelling
+        //    corrections when nothing matches as a prefix.
+        let result = dictionaryService.suggestions(for: trimmed)
+        let matches = result.words
         suggestions = matches
+        suggestionsAreCorrections = result.isCorrection
         // Fetch one-line previews for the rows the user can actually see.
         loadGlosses(for: Array(matches.prefix(14)))
         // Prefer an exact hit on what was typed; otherwise the top match.
@@ -409,6 +417,9 @@ struct SearchPanelView: View {
         ScrollViewReader { proxy in
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 2) {
+                    if viewModel.suggestionsAreCorrections {
+                        didYouMeanHeader
+                    }
                     ForEach(Array(viewModel.suggestions.indices), id: \.self) { index in
                         matchRow(viewModel.suggestions[index],
                                  isSelected: index == viewModel.highlightedIndex)
@@ -426,6 +437,22 @@ struct SearchPanelView: View {
                 }
             }
         }
+    }
+
+    /// Small header shown atop the rail when the list holds spelling corrections.
+    private var didYouMeanHeader: some View {
+        HStack(spacing: 5) {
+            Image(systemName: "text.magnifyingglass")
+                .font(.system(size: 10, weight: .semibold))
+                .foregroundStyle(Theme.inkTertiary)
+            Text("DID YOU MEAN")
+                .font(Theme.ui(10, weight: .semibold))
+                .tracking(0.5)
+                .foregroundStyle(Theme.inkTertiary)
+        }
+        .padding(.horizontal, 10)
+        .padding(.top, 2)
+        .padding(.bottom, 6)
     }
 
     private func matchRow(_ word: String, isSelected: Bool) -> some View {

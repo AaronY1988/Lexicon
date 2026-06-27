@@ -15,6 +15,16 @@ import Foundation
 import CoreServices
 import AppKit
 
+/// Result of a suggestion query: the candidate words plus whether they are
+/// spelling *corrections* (surfaced when the typed word matched nothing and
+/// looks misspelled) rather than ordinary prefix matches. The UI uses the flag
+/// to show a small "did you mean" header above the list.
+struct WordSuggestions {
+    var words: [String]
+    var isCorrection: Bool
+    static let empty = WordSuggestions(words: [], isCorrection: false)
+}
+
 @MainActor
 final class DictionaryService: ObservableObject {
 
@@ -156,9 +166,9 @@ final class DictionaryService: ObservableObject {
     /// first, then words that *start with* what was typed, then words that
     /// merely *contain* it, then the rest — each tier alphabetical. Cheap
     /// enough to call on the main actor on every keystroke.
-    func suggestions(for prefix: String, limit: Int = 40) -> [String] {
+    func suggestions(for prefix: String, limit: Int = 40) -> WordSuggestions {
         let trimmed = prefix.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return [] }
+        guard !trimmed.isEmpty else { return .empty }
 
         var seen = Set<String>()
         var ordered: [String] = []
@@ -171,10 +181,11 @@ final class DictionaryService: ObservableObject {
 
         let checker = NSSpellChecker.shared
         let ns = trimmed as NSString
+        let fullRange = NSRange(location: 0, length: ns.length)
 
         // Prefix completions from the system spell dictionary.
         if let completions = checker.completions(
-                forPartialWordRange: NSRange(location: 0, length: ns.length),
+                forPartialWordRange: fullRange,
                 in: trimmed,
                 language: nil,
                 inSpellDocumentWithTag: 0) {
@@ -191,7 +202,30 @@ final class DictionaryService: ObservableObject {
             Self.rankKey(lhs, lowerQuery: lowerQuery)
                 < Self.rankKey(rhs, lowerQuery: lowerQuery)
         }
-        return Array(ranked.prefix(limit))
+        if !ranked.isEmpty {
+            return WordSuggestions(words: Array(ranked.prefix(limit)), isCorrection: false)
+        }
+
+        // Nothing matched as a prefix — the word is likely misspelled. Fall back
+        // to the spell-checker's corrections, kept in its own likelihood order
+        // (best guess first) rather than re-ranked. e.g. "seperate" → "separate".
+        var corrections: [String] = []
+        var seenC = Set<String>()
+        if let guesses = checker.guesses(
+                forWordRange: fullRange,
+                in: trimmed,
+                language: nil,
+                inSpellDocumentWithTag: 0) {
+            for guess in guesses {
+                let word = guess.trimmingCharacters(in: .whitespacesAndNewlines)
+                // Keep single, lookup-friendly words (the checker occasionally
+                // returns phrases or hyphenated forms).
+                guard !word.isEmpty, !word.contains(" ") else { continue }
+                if seenC.insert(word.lowercased()).inserted { corrections.append(word) }
+            }
+        }
+        return WordSuggestions(words: Array(corrections.prefix(limit)),
+                               isCorrection: !corrections.isEmpty)
     }
 
     /// Sort key: lower tier sorts first. (0 exact, 1 prefix, 2 contains, 3 other),
