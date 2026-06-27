@@ -1,0 +1,40 @@
+# ---- macOS ----
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon?
+
+# ---- Xcode ----
+build/
+DerivedData/
+*.moved-aside
+*.pbxuser
+!default.pbxuser
+*.mode1v3
+!default.mode1v3
+*.mode2v3
+!default.mode2v3
+*.perspectivev3
+!default.perspectivev3
+*.xcuserstate
+*.xcscmblueprint
+xcuserdata/
+*.xccheckout
+
+# ---- XcodeGen ----
+# Lexicon.xcodeproj IS committed so the project opens straight after cloning.
+# It can also be regenerated from project.yml with `xcodegen generate`.
+# Only the per-user state inside it is ignored (see xcuserdata/ above).
+
+# ---- Swift Package Manager ----
+.build/
+.swiftpm/
+Packages/
+
+# ---- Dependency managers (unused, kept for safety) ----
+Pods/
+Carthage/Build/
+
+# ---- Personal / marketing assets (not part of the app) ----
+小红书笔记-Lexicon.md
+make_cards.py

@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lexicon — Reading Room redesign</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/tabler-icons/2.47.0/iconfont/tabler-icons.min.css">
+<style>
+  :root{ --font-sans:-apple-system,BlinkMacSystemFont,"SF Pro Text",sans-serif;
+         --font-serif:"New York","Iowan Old Style",Georgia,serif; }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:var(--font-sans);background:#3a3a40;color:#222;
+       min-height:100vh;display:flex;flex-direction:column;align-items:center}
+  .stage{width:660px;max-width:100%;margin:36px auto 8px;border-radius:16px;overflow:hidden;
+         border:0.5px solid rgba(0,0,0,.25);background:#9aa0ad}
+  .menubar{display:flex;align-items:center;justify-content:flex-end;gap:18px;height:30px;
+           padding:0 16px;background:rgba(255,255,255,.16);font-size:13px;color:rgba(255,255,255,.85)}
+  .menubar .mb-ic{font-size:15px;opacity:.8}
+  .menubar .mb-book{opacity:1;color:#fff}
+  .wrap{display:flex;justify-content:center;padding:38px 20px 48px}
+  .panel{width:540px;border-radius:18px;border:0.5px solid var(--pline);background:var(--pbg);
+         overflow:hidden;box-shadow:0 24px 60px rgba(0,0,0,.35)}
+  .panel.light{--pbg:#FBF8F2;--pbg2:#F2ECE1;--ink:#2A2521;--ink2:#7C736A;--ink3:#A89E91;
+    --acc:#5A50C8;--accbg:rgba(90,80,200,.10);--pline:rgba(60,50,40,.14);--chip:rgba(60,50,40,.05);--star:#E0A93B}
+  .panel.dark{--pbg:#1B191D;--pbg2:#26232A;--ink:#ECE6DD;--ink2:#9C948A;--ink3:#6E665E;
+    --acc:#A99BFF;--accbg:rgba(150,135,255,.16);--pline:rgba(255,250,240,.10);--chip:rgba(255,250,240,.06);--star:#F0C04E}
+  .searchbar{display:flex;align-items:center;gap:12px;padding:17px 20px;border-bottom:0.5px solid var(--pline)}
+  .searchbar .mag{font-size:19px;color:var(--acc);opacity:.85}
+  .searchbar .q{font-family:var(--font-serif);font-size:21px;color:var(--ink);flex:1}
+  .searchbar .caret{display:inline-block;width:1.5px;height:22px;background:var(--acc);
+                    margin-left:1px;vertical-align:-4px;animation:bl 1.1s step-end infinite}
+  @keyframes bl{50%{opacity:0}}
+  .kbd{display:flex;gap:4px}
+  .kbd span{min-width:20px;height:20px;display:flex;align-items:center;justify-content:center;
+            font-size:12px;color:var(--ink2);background:var(--chip);border-radius:5px;padding:0 5px}
+  .body{padding:22px 24px 8px}
+  .head{display:flex;align-items:flex-start;gap:14px}
+  .hw{font-family:var(--font-serif);font-size:38px;line-height:1.05;color:var(--ink);font-weight:600;flex:1}
+  .acts{display:flex;gap:7px;padding-top:7px}
+  .iconbtn{width:32px;height:32px;border-radius:50%;border:none;background:var(--chip);color:var(--ink2);
+           font-size:15px;display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0}
+  .iconbtn.play{background:var(--acc);color:#fff}
+  .iconbtn.star.on{color:var(--star)}
+  .phon{display:flex;flex-wrap:wrap;gap:16px;margin-top:12px;align-items:center}
+  .phon .v{display:flex;align-items:center;gap:7px;font-size:15px;color:var(--ink2)}
+  .phon .tag{font-size:10px;letter-spacing:.6px;font-weight:600;color:var(--ink3);
+             background:var(--chip);padding:2px 6px;border-radius:20px}
+  .phon .spk{font-size:13px;color:var(--acc);cursor:pointer}
+  .tabs{display:flex;gap:20px;margin-top:20px;border-bottom:0.5px solid var(--pline)}
+  .tab{font-size:13px;color:var(--ink3);padding-bottom:9px;cursor:pointer;
+       border-bottom:2px solid transparent;margin-bottom:-0.5px}
+  .tab.on{color:var(--acc);border-bottom-color:var(--acc)}
+  .pos{font-family:var(--font-serif);font-style:italic;font-size:15px;color:var(--acc);margin:20px 0 14px}
+  .sense{display:flex;gap:12px;margin-bottom:16px}
+  .num{flex:none;width:21px;height:21px;border-radius:7px;background:var(--accbg);color:var(--acc);
+       font-size:12px;font-weight:600;display:flex;align-items:center;justify-content:center;margin-top:3px}
+  .def{font-family:var(--font-serif);font-size:16px;line-height:1.6;color:var(--ink)}
+  .ex{font-family:var(--font-serif);font-style:italic;font-size:15px;color:var(--ink2);margin-top:5px}
+  .origin{margin:6px 0 18px;padding:13px 15px;background:var(--pbg2);border-radius:11px}
+  .origin .lbl{font-size:10px;letter-spacing:1.2px;font-weight:600;color:var(--ink3);margin-bottom:5px}
+  .origin .txt{font-family:var(--font-serif);font-size:13.5px;line-height:1.55;color:var(--ink2)}
+  .recents{display:flex;align-items:center;gap:9px;flex-wrap:wrap;padding:14px 24px 20px;
+           border-top:0.5px solid var(--pline)}
+  .recents .rl{font-size:11px;letter-spacing:.5px;color:var(--ink3)}
+  .pill{font-family:var(--font-serif);font-size:14px;color:var(--ink2);background:var(--chip);
+        padding:5px 13px;border-radius:30px;cursor:pointer}
+  .themetoggle{display:flex;justify-content:center;gap:8px;padding:4px 0 40px}
+  .tt{display:flex;align-items:center;gap:6px;font-size:13px;color:#cfcfd6;background:rgba(255,255,255,.08);
+      border:0.5px solid rgba(255,255,255,.18);border-radius:8px;padding:7px 14px;cursor:pointer}
+  .tt.sel{border-color:#fff;color:#fff;background:rgba(255,255,255,.16)}
+</style>
+</head>
+<body>
+  <div class="stage">
+    <div class="menubar">
+      <span>9:41</span>
+      <i class="ti ti-wifi mb-ic"></i>
+      <i class="ti ti-battery-3 mb-ic"></i>
+      <i class="ti ti-book mb-book" title="Lexicon"></i>
+    </div>
+    <div class="wrap">
+      <div class="panel light" id="panel">
+        <div class="searchbar">
+          <i class="ti ti-search mag"></i>
+          <div class="q">outstanding<span class="caret"></span></div>
+          <div class="kbd"><span>&#8963;</span><span>&#8984;</span><span>D</span></div>
+        </div>
+        <div class="body">
+          <div class="head">
+            <div class="hw">outstanding</div>
+            <div class="acts">
+              <button class="iconbtn play" aria-label="Pronounce"><i class="ti ti-volume"></i></button>
+              <button class="iconbtn star" id="star" aria-label="Favorite"><i class="ti ti-star"></i></button>
+              <button class="iconbtn" aria-label="Copy"><i class="ti ti-copy"></i></button>
+            </div>
+          </div>
+          <div class="phon">
+            <div class="v"><span class="tag">BrE</span><span>/a&#650;t&#712;stand&#618;&#331;/</span><i class="ti ti-volume spk"></i></div>
+            <div class="v"><span class="tag">AmE</span><span>/a&#650;t&#712;st&#230;nd&#618;&#331;/</span><i class="ti ti-volume spk"></i></div>
+          </div>
+          <div class="tabs">
+            <div class="tab on">New Oxford American</div>
+            <div class="tab">Thesaurus</div>
+            <div class="tab">Wikipedia</div>
+          </div>
+          <div class="pos">adjective</div>
+          <div class="sense">
+            <div class="num">1</div>
+            <div><div class="def">exceptionally good; clearly noticeable above the rest.</div>
+            <div class="ex">&ldquo;the team turned in an outstanding performance&rdquo;</div></div>
+          </div>
+          <div class="sense">
+            <div class="num">2</div>
+            <div><div class="def">remaining to be done or dealt with.</div>
+            <div class="ex">&ldquo;a few details are still outstanding&rdquo;</div></div>
+          </div>
+          <div class="sense">
+            <div class="num">3</div>
+            <div><div class="def">(of a payment) not yet settled.</div>
+            <div class="ex">&ldquo;$1,400 remains outstanding on the account&rdquo;</div></div>
+          </div>
+          <div class="origin">
+            <div class="lbl">ORIGIN</div>
+            <div class="txt">early 17th century: from the verb <em>stand out</em> &mdash; to be prominent or conspicuous.</div>
+          </div>
+        </div>
+        <div class="recents">
+          <span class="rl">RECENT</span>
+          <span class="pill">serendipity</span>
+          <span class="pill">ephemeral</span>
+          <span class="pill">lexicon</span>
+          <span class="pill">candor</span>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="themetoggle">
+    <button class="tt sel" id="b-light"><i class="ti ti-sun"></i> Daylight</button>
+    <button class="tt" id="b-dark"><i class="ti ti-moon"></i> Lamplight</button>
+  </div>
+<script>
+(function(){
+  var p=document.getElementById('panel');
+  document.getElementById('b-light').onclick=function(){p.className='panel light';this.classList.add('sel');document.getElementById('b-dark').classList.remove('sel')};
+  document.getElementById('b-dark').onclick=function(){p.className='panel dark';this.classList.add('sel');document.getElementById('b-light').classList.remove('sel')};
+  document.getElementById('star').onclick=function(){this.classList.toggle('on')};
+  document.querySelectorAll('.tab').forEach(function(t){t.onclick=function(){document.querySelectorAll('.tab').forEach(function(x){x.classList.remove('on')});t.classList.add('on')}});
+})();
+</script>
+</body>
+</html>
