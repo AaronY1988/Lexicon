@@ -17,7 +17,7 @@ enum SelectionService {
     /// Returns the selected text from the currently-frontmost app, or nil if
     /// the selection couldn't be captured (no permission, nothing selected, …).
     static func copyCurrentSelection() -> String? {
-        guard hasAccessibilityPermission() else { return nil }
+        guard isTrusted else { return nil }
 
         let pasteboard = NSPasteboard.general
 
@@ -62,12 +62,22 @@ enum SelectionService {
         return captured
     }
 
-    private static func hasAccessibilityPermission() -> Bool {
+    /// True when Lexicon already has Accessibility permission (does not prompt).
+    static var isTrusted: Bool {
         // `kAXTrustedCheckOptionPrompt` is imported as `Unmanaged<CFString>` in
-        // the current ApplicationServices SDK — we have to unwrap it before
-        // bridging to String.
+        // the current ApplicationServices SDK — unwrap before bridging to String.
         let key = kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String
-        let options = [key: false] as CFDictionary
-        return AXIsProcessTrustedWithOptions(options)
+        return AXIsProcessTrustedWithOptions([key: false] as CFDictionary)
+    }
+
+    /// Show the system Accessibility prompt (which registers Lexicon in the
+    /// Accessibility list) and open the settings pane so the user can switch it
+    /// on. Needed for "look up the selected word" to work.
+    static func requestAccessibilityPermission() {
+        let key = kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String
+        _ = AXIsProcessTrustedWithOptions([key: true] as CFDictionary)
+        if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility") {
+            NSWorkspace.shared.open(url)
+        }
     }
 }

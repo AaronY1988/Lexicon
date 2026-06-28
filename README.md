@@ -125,9 +125,9 @@ open Lexicon.xcodeproj
 
 ## Permissions
 
-On first launch, macOS will ask for **Accessibility permission**. This is required so Lexicon can read the selected text from the frontmost app when you press the hotkey. Grant it in *System Settings → Privacy & Security → Accessibility*.
+The first time you use the hotkey on selected text, Lexicon asks for **Accessibility permission** (and opens the right settings pane). This is required so it can read the selected text from the frontmost app. Grant it in *System Settings → Privacy & Security → Accessibility*, then restart Lexicon. You can also trigger this any time from the menu bar → "Enable look-up of selected text…".
 
-(The app works fine without it — you just lose the "look up selected text" shortcut.)
+(The app works fine without it — you just lose the "look up selected text" shortcut and can type words in instead.)
 
 ## How it talks to Apple Dictionary
 

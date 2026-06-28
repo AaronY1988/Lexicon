@@ -12,6 +12,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var menuBar: MenuBarController!
     private var panel: PanelController!
     private var hotKey: HotKeyManager!
+    private var didPromptAccessibility = false
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         // Ensure we never accidentally show a dock icon (also enforced by Info.plist LSUIElement).
@@ -37,7 +38,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         } else {
             var seed: String? = nil
             if usingSelection {
-                seed = SelectionService.copyCurrentSelection()
+                if SelectionService.isTrusted {
+                    seed = SelectionService.copyCurrentSelection()
+                } else if !didPromptAccessibility {
+                    // First time the selection hotkey is used without permission:
+                    // guide the user to grant Accessibility (just this once).
+                    didPromptAccessibility = true
+                    SelectionService.requestAccessibilityPermission()
+                }
             }
             panel.show(prefill: seed)
         }

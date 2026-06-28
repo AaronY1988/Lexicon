@@ -61,6 +61,15 @@ final class MenuBarController {
                      keyEquivalent: "")
             .target = self
 
+        // Shown only until the user grants Accessibility, which "look up the
+        // selected word" needs.
+        if !SelectionService.isTrusted {
+            menu.addItem(withTitle: "Enable look-up of selected text…",
+                         action: #selector(grantAccessibility),
+                         keyEquivalent: "")
+                .target = self
+        }
+
         menu.addItem(.separator())
         menu.addItem(withTitle: "Settings…",
                      action: #selector(openSettings),
@@ -112,6 +121,11 @@ final class MenuBarController {
     /// Clear recent lookups (favorites are kept).
     @objc private func clearRecent() {
         HistoryStore.shared.clearHistory()
+    }
+
+    /// Prompt for Accessibility so look-up of the selected word can work.
+    @objc private func grantAccessibility() {
+        SelectionService.requestAccessibilityPermission()
     }
     @objc private func showAbout() {
         NSApp.orderFrontStandardAboutPanel(nil)

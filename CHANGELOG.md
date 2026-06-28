@@ -12,6 +12,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   include ⌘, ⌃, or ⌥); the change takes effect immediately, and the panel,
   menu, and tooltip update to show it. A reset button restores the default ⌃⌘D.
 
+### Fixed
+- **Look up the selected word now prompts for permission** — pressing the hotkey
+  on selected text needs Accessibility access. Lexicon now requests it (and opens
+  the Accessibility settings pane) the first time you use it, instead of silently
+  doing nothing; a "Enable look-up of selected text…" menu item appears until
+  it's granted.
+
 ## [1.3.0] — 2026-06-28
 
 ### Added
