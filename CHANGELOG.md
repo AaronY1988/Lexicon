@@ -4,6 +4,18 @@ All notable changes to Lexicon are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.2.0] — 2026-06-28
+
+### Added
+- **Share as image** — a share button in the definition header turns any entry
+  into a word card you can **copy to the clipboard** or **save as a PNG**. The
+  card uses the warm Reading Room style and shows the full entry for the active
+  dictionary: headword, both phonetic variants, part of speech, every sense
+  (with translations, domain labels, and examples), etymology, and a source
+  attribution with a small Lexicon wordmark. It always renders in light mode so
+  the exported image looks the same regardless of system appearance, and saved
+  files default to a capitalized filename (e.g. `Serendipity.png`).
+
 ## [1.1.0] — 2026-06-28
 
 ### Added

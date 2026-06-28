@@ -21,6 +21,8 @@
 //
 
 import SwiftUI
+import AppKit
+import UniformTypeIdentifiers
 
 struct DefinitionView: View {
 
@@ -103,6 +105,30 @@ struct DefinitionView: View {
                 }
                 .buttonStyle(.plain)
                 .help("Copy definition")
+
+                Menu {
+                    Button {
+                        ShareCardExporter.copyToPasteboard(record)
+                    } label: {
+                        Label("Copy as image", systemImage: "doc.on.doc")
+                    }
+                    Button {
+                        ShareCardExporter.savePNG(record)
+                    } label: {
+                        Label("Save as PNG…", systemImage: "square.and.arrow.down")
+                    }
+                } label: {
+                    Image(systemName: "square.and.arrow.up")
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundStyle(Theme.inkSecondary)
+                        .frame(width: 32, height: 32)
+                        .background(Circle().fill(Theme.chip))
+                }
+                .menuStyle(.button)
+                .buttonStyle(.plain)
+                .menuIndicator(.hidden)
+                .fixedSize()
+                .help("Share as image")
             }
 
             if !record.phonetics.isEmpty {
@@ -468,5 +494,275 @@ struct FlowHStack: Layout {
             rows[rows.count - 1].items.append((index, size.width))
         }
         return rows
+    }
+}
+
+// MARK: - Share card
+//
+// A self-contained, export-friendly rendering of one `DefinitionRecord`, with
+// a Lexicon wordmark and source attribution. Kept on a fixed warm "Daylight"
+// palette (the exporter forces `.light`) so the saved PNG always looks the same
+// regardless of the user's system appearance.
+
+struct ShareCardView: View {
+
+    let record: DefinitionRecord
+    /// Card width in points; the PNG is rendered at 2× this.
+    var width: CGFloat = 520
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            brandHeader
+
+            Text(record.headword)
+                .font(.system(size: 40, weight: .semibold, design: .serif))
+                .foregroundStyle(Theme.ink)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.top, 16)
+
+            if !record.phonetics.isEmpty {
+                phoneticRow.padding(.top, 12)
+            }
+
+            Rectangle().fill(Theme.line).frame(height: 1).padding(.vertical, 18)
+
+            VStack(alignment: .leading, spacing: 18) {
+                ForEach(record.sections) { section in
+                    sectionView(section)
+                }
+            }
+
+            Rectangle().fill(Theme.line).frame(height: 1)
+                .padding(.top, 18).padding(.bottom, 12)
+
+            footer
+        }
+        .padding(.horizontal, 34)
+        .padding(.top, 30)
+        .padding(.bottom, 24)
+        .frame(width: width, alignment: .leading)
+        .background(Theme.paper)
+        .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 22, style: .continuous)
+                .strokeBorder(Theme.line, lineWidth: 1)
+        )
+    }
+
+    private var brandHeader: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "book.closed")
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundStyle(Theme.accent)
+            Text("LEXICON")
+                .font(.system(size: 11, weight: .semibold))
+                .tracking(1.6)
+                .foregroundStyle(Theme.inkTertiary)
+        }
+    }
+
+    private var phoneticRow: some View {
+        FlowHStack(spacing: 18, lineSpacing: 6) {
+            ForEach(Array(record.phonetics.enumerated()), id: \.offset) { _, v in
+                HStack(spacing: 6) {
+                    if let dialect = v.dialect {
+                        Text(dialect)
+                            .font(.system(size: 10, weight: .bold))
+                            .tracking(0.5)
+                            .foregroundStyle(Theme.inkTertiary)
+                            .padding(.horizontal, 6).padding(.vertical, 2)
+                            .background(Capsule().fill(Theme.chip))
+                    }
+                    Text("/\(v.ipa)/")
+                        .font(.system(size: 14))
+                        .foregroundStyle(Theme.inkSecondary)
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func sectionView(_ section: DefinitionSection) -> some View {
+        switch section.kind {
+        case .partOfSpeech:
+            posBlock(section)
+        case .etymology:
+            originBlock(section)
+        case .note, .plain:
+            Text(section.text)
+                .font(.system(size: 16, design: .serif))
+                .foregroundStyle(Theme.ink)
+                .lineSpacing(4)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    private func posBlock(_ section: DefinitionSection) -> some View {
+        VStack(alignment: .leading, spacing: 14) {
+            if !section.text.isEmpty {
+                Text(section.text)
+                    .font(.system(size: 15, weight: .semibold, design: .serif).italic())
+                    .foregroundStyle(Theme.accent)
+            }
+            ForEach(Array(section.senses.enumerated()), id: \.element.id) { idx, sense in
+                senseRow(index: idx + 1, sense: sense)
+            }
+        }
+    }
+
+    private func senseRow(index: Int, sense: DefinitionSection.Sense) -> some View {
+        HStack(alignment: .top, spacing: 12) {
+            Text(sense.number ?? "\(index)")
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(Theme.accent)
+                .frame(width: 24, height: 24)
+                .background(
+                    RoundedRectangle(cornerRadius: 7, style: .continuous)
+                        .fill(Theme.accentSoft)
+                )
+            VStack(alignment: .leading, spacing: 8) {
+                if let label = sense.categoryLabel, !label.isEmpty {
+                    Text(label)
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(Theme.accent)
+                        .padding(.horizontal, 8).padding(.vertical, 2)
+                        .background(Capsule().fill(Theme.accentSoft))
+                }
+                ForEach(sense.translations) { row in
+                    HStack(alignment: .firstTextBaseline, spacing: 10) {
+                        Text(row.target)
+                            .font(.system(size: 17, weight: .medium, design: .serif))
+                            .foregroundStyle(Theme.ink)
+                            .fixedSize(horizontal: false, vertical: true)
+                        if let pron = row.pronunciation {
+                            Text(pron)
+                                .font(.system(size: 12).italic())
+                                .foregroundStyle(Theme.inkSecondary)
+                        }
+                        if !row.domains.isEmpty {
+                            FlowHStack(spacing: 4, lineSpacing: 4) {
+                                ForEach(row.domains, id: \.self) { d in
+                                    Text(d)
+                                        .font(.system(size: 10, weight: .medium))
+                                        .foregroundStyle(Theme.inkTertiary)
+                                        .padding(.horizontal, 6).padding(.vertical, 1.5)
+                                        .background(Capsule().fill(Theme.chip))
+                                        .overlay(Capsule().stroke(Theme.line, lineWidth: 0.5))
+                                }
+                            }
+                        }
+                    }
+                }
+                if !sense.definition.isEmpty {
+                    Text(sense.definition)
+                        .font(.system(size: 17, design: .serif))
+                        .foregroundStyle(Theme.ink)
+                        .lineSpacing(4)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                ForEach(sense.examples, id: \.self) { ex in
+                    HStack(alignment: .firstTextBaseline, spacing: 8) {
+                        Text("\u{25B8}")
+                            .font(.system(size: 11, weight: .bold))
+                            .foregroundStyle(Theme.accent.opacity(0.7))
+                        Text(ex)
+                            .font(.system(size: 15, design: .serif).italic())
+                            .foregroundStyle(Theme.inkSecondary)
+                            .lineSpacing(3)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+            }
+        }
+    }
+
+    private func originBlock(_ section: DefinitionSection) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("ORIGIN")
+                .font(.system(size: 10, weight: .bold))
+                .tracking(1.2)
+                .foregroundStyle(Theme.inkTertiary)
+            Text(section.text)
+                .font(.system(size: 13.5, design: .serif))
+                .foregroundStyle(Theme.inkSecondary)
+                .lineSpacing(2)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .fill(Theme.paperRaised)
+        )
+    }
+
+    private var footer: some View {
+        HStack(spacing: 8) {
+            Text(record.source.name)
+                .font(.system(size: 11.5))
+                .foregroundStyle(Theme.inkTertiary)
+                .lineLimit(1)
+            Spacer(minLength: 8)
+            HStack(spacing: 5) {
+                Image(systemName: "book.closed")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(Theme.accent)
+                Text("Looked up with Lexicon")
+                    .font(.system(size: 11.5))
+                    .foregroundStyle(Theme.inkTertiary)
+            }
+            .fixedSize()
+        }
+    }
+}
+
+// MARK: - Share card export
+
+@MainActor
+enum ShareCardExporter {
+
+    /// Render the share card for `record` to an `NSImage` (2× for retina).
+    static func image(for record: DefinitionRecord) -> NSImage? {
+        let card = ShareCardView(record: record)
+            .environment(\.colorScheme, .light)
+        let renderer = ImageRenderer(content: card)
+        renderer.scale = max(2, NSScreen.main?.backingScaleFactor ?? 2)
+        return renderer.nsImage
+    }
+
+    /// Copy the card image to the general pasteboard.
+    static func copyToPasteboard(_ record: DefinitionRecord) {
+        guard let image = image(for: record) else { return }
+        let pb = NSPasteboard.general
+        pb.clearContents()
+        pb.writeObjects([image])
+    }
+
+    /// Prompt for a location and write the card as a PNG.
+    static func savePNG(_ record: DefinitionRecord) {
+        guard let image = image(for: record),
+              let tiff = image.tiffRepresentation,
+              let rep = NSBitmapImageRep(data: tiff),
+              let png = rep.representation(using: .png, properties: [:]) else { return }
+
+        let panel = NSSavePanel()
+        panel.allowedContentTypes = [.png]
+        panel.nameFieldStringValue = "\(safeFileName(record.headword)).png"
+        panel.canCreateDirectories = true
+        panel.title = "Save word card"
+        NSApp.activate(ignoringOtherApps: true)
+        if panel.runModal() == .OK, let url = panel.url {
+            try? png.write(to: url)
+        }
+    }
+
+    private static func safeFileName(_ name: String) -> String {
+        let cleaned = name.components(separatedBy: CharacterSet(charactersIn: "/\\:?%*|\"<>"))
+            .joined(separator: "-")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let first = cleaned.first else { return "Word" }
+        // Capitalize only the first letter, leaving the rest as-is
+        // (e.g. "serendipity" → "Serendipity"; CJK headwords are unchanged).
+        return first.uppercased() + cleaned.dropFirst()
     }
 }
