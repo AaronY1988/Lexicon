@@ -54,7 +54,26 @@ final class MenuBarController {
                      action: #selector(openFromMenu),
                      keyEquivalent: "")
             .target = self
+
+        let due = StudyStore.shared.dueCount
+        menu.addItem(withTitle: due > 0 ? "Study (\(due) due)…" : "Study…",
+                     action: #selector(openStudy),
+                     keyEquivalent: "")
+            .target = self
+
         menu.addItem(.separator())
+        menu.addItem(withTitle: "Settings…",
+                     action: #selector(openSettings),
+                     keyEquivalent: ",")
+            .target = self
+
+        let clearItem = menu.addItem(withTitle: "Clear Recent",
+                                     action: #selector(clearRecent),
+                                     keyEquivalent: "")
+        clearItem.target = self
+        // Nothing to clear when there are no non-favorite recents.
+        clearItem.isEnabled = HistoryStore.shared.recent.contains { !$0.isFavorite }
+
         menu.addItem(withTitle: "About Lexicon",
                      action: #selector(showAbout),
                      keyEquivalent: "")
@@ -78,6 +97,22 @@ final class MenuBarController {
 
     @objc private func openFromMenu() { onOpen() }
     @objc private func quitFromMenu() { onQuit() }
+
+    /// Open the dictionary preferences window. We host it in a dedicated AppKit
+    /// window (see `PreferencesWindowController`) because an accessory app can't
+    /// reliably open the SwiftUI `Settings` scene programmatically.
+    @objc private func openSettings() {
+        PreferencesWindowController.shared.show()
+    }
+
+    @objc private func openStudy() {
+        StudyWindowController.shared.show()
+    }
+
+    /// Clear recent lookups (favorites are kept).
+    @objc private func clearRecent() {
+        HistoryStore.shared.clearHistory()
+    }
     @objc private func showAbout() {
         NSApp.orderFrontStandardAboutPanel(nil)
         NSApp.activate(ignoringOtherApps: true)

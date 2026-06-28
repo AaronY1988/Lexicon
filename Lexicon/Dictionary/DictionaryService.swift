@@ -30,8 +30,16 @@ final class DictionaryService: ObservableObject {
 
     static let shared = DictionaryService()
 
-    /// All dictionaries the user has enabled in System Settings → Dictionary.
+    /// Every Apple dictionary installed on the system, in the user's preferred
+    /// display order. Drives the Preferences list.
+    @Published private(set) var allDictionaries: [DictionarySource] = []
+    /// IDs the user has switched on in Preferences. Lookups only use these.
+    @Published private(set) var enabledIDs: Set<String> = []
+    /// The enabled dictionaries, in order — the sources used for every lookup.
     @Published private(set) var sources: [DictionarySource] = []
+
+    private let kEnabled = "enabledDictionaryIDs"
+    private let kOrder   = "dictionaryOrder"
 
     private init() {
         reloadSources()
@@ -39,29 +47,100 @@ final class DictionaryService: ObservableObject {
 
     // MARK: - Source discovery
 
+    /// Re-scan the system for installed dictionaries and rebuild `allDictionaries`
+    /// / `sources` from the saved preferences. On first run (no saved prefs) the
+    /// enabled set defaults to whatever is active in `Dictionary.app`, so the
+    /// behavior is unchanged until the user customizes it.
     func reloadSources() {
-        var found: [DictionarySource] = []
+        // Collect dictionaries from BOTH the active list (the system-enabled
+        // ones — what Lexicon used before this feature) and the full available
+        // list. Active is included directly so the defaults always work even if
+        // the "available" enumeration returns nothing on a given system.
+        var byID: [String: DictionarySource] = [:]
+        var activeIDs: [String] = []
+        var availableIDs: [String] = []
 
-        // Active = enabled + ordered as in Dictionary.app preferences.
         if let active = DCSGetActiveDictionaries()?.takeUnretainedValue() as? [AnyObject] {
             for dict in active {
-                let name = (DCSDictionaryGetName(dict)?.takeUnretainedValue() as String?) ?? "Dictionary"
-                let id   = (DCSDictionaryGetShortName(dict)?.takeUnretainedValue() as String?) ?? UUID().uuidString
-                found.append(.init(id: id, name: name, handle: dict))
+                let src = makeSource(dict)
+                if byID[src.id] == nil { byID[src.id] = src }
+                activeIDs.append(src.id)
+            }
+        }
+        if let avail = DCSCopyAvailableDictionaries()?.takeRetainedValue() as? [AnyObject] {
+            for dict in avail {
+                let src = makeSource(dict)
+                if byID[src.id] == nil { byID[src.id] = src }
+                availableIDs.append(src.id)
             }
         }
 
-        // Fall back to "all available" if for some reason the active list was empty.
-        if found.isEmpty,
-           let available = DCSCopyAvailableDictionaries()?.takeRetainedValue() as? [AnyObject] {
-            for dict in available {
-                let name = (DCSDictionaryGetName(dict)?.takeUnretainedValue() as String?) ?? "Dictionary"
-                let id   = (DCSDictionaryGetShortName(dict)?.takeUnretainedValue() as String?) ?? UUID().uuidString
-                found.append(.init(id: id, name: name, handle: dict))
+        // Saved preferences (nil enabled → first run).
+        let savedEnabled = (UserDefaults.standard.array(forKey: kEnabled) as? [String]).map(Set.init)
+        let savedOrder = UserDefaults.standard.array(forKey: kOrder) as? [String] ?? []
+
+        // Display order: saved order, then active order, then any remaining.
+        var ordered: [DictionarySource] = []
+        var placed = Set<String>()
+        func place(_ ids: [String]) {
+            for id in ids where placed.insert(id).inserted {
+                if let d = byID[id] { ordered.append(d) }
             }
         }
+        place(savedOrder)
+        place(activeIDs)
+        place(availableIDs)
+        allDictionaries = ordered
 
-        self.sources = found
+        // Enabled set: saved, else the system-active set (or all if no active).
+        if let savedEnabled {
+            enabledIDs = savedEnabled.intersection(Set(ordered.map(\.id)))
+        } else {
+            enabledIDs = activeIDs.isEmpty ? Set(ordered.map(\.id)) : Set(activeIDs)
+        }
+
+        recomputeSources()
+    }
+
+    private func makeSource(_ dict: AnyObject) -> DictionarySource {
+        let name = (DCSDictionaryGetName(dict)?.takeUnretainedValue() as String?) ?? "Dictionary"
+        let id   = (DCSDictionaryGetShortName(dict)?.takeUnretainedValue() as String?) ?? UUID().uuidString
+        return .init(id: id, name: name, handle: dict)
+    }
+
+    private func recomputeSources() {
+        sources = allDictionaries.filter { enabledIDs.contains($0.id) }
+    }
+
+    // MARK: - Preferences API
+
+    func isEnabled(_ id: String) -> Bool { enabledIDs.contains(id) }
+
+    /// Toggle a dictionary on/off and persist.
+    func setEnabled(_ id: String, _ on: Bool) {
+        if on { enabledIDs.insert(id) } else { enabledIDs.remove(id) }
+        recomputeSources()
+        savePreferences()
+    }
+
+    /// Reorder the dictionary list (drag-and-drop in Preferences) and persist.
+    /// Reimplements SwiftUI's `move(fromOffsets:toOffset:)` semantics so the
+    /// service doesn't need to import SwiftUI.
+    func moveDictionaries(fromOffsets source: IndexSet, toOffset destination: Int) {
+        var items = allDictionaries
+        let moving = source.sorted().map { items[$0] }
+        for index in source.sorted(by: >) { items.remove(at: index) }
+        let insertAt = destination - source.filter { $0 < destination }.count
+        items.insert(contentsOf: moving, at: max(0, min(insertAt, items.count)))
+        allDictionaries = items
+        recomputeSources()
+        savePreferences()
+    }
+
+    private func savePreferences() {
+        let d = UserDefaults.standard
+        d.set(allDictionaries.map(\.id), forKey: kOrder)
+        d.set(Array(enabledIDs), forKey: kEnabled)
     }
 
     // MARK: - Lookup

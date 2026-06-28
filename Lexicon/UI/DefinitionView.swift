@@ -28,6 +28,17 @@ struct DefinitionView: View {
 
     let record: DefinitionRecord
     @ObservedObject private var history = HistoryStore.shared
+    @ObservedObject private var settings = AppSettings.shared
+    @ObservedObject private var study = StudyStore.shared
+
+    /// Serif font for definition *body* text, scaled by the user's font setting.
+    private func bodySerif(_ size: CGFloat, weight: Font.Weight = .regular) -> Font {
+        Theme.serif(size * settings.definitionFontScale, weight: weight)
+    }
+    /// Rounded UI font for supporting body text (pinyin), scaled likewise.
+    private func bodyUI(_ size: CGFloat, weight: Font.Weight = .regular) -> Font {
+        Theme.ui(size * settings.definitionFontScale, weight: weight)
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
@@ -91,6 +102,19 @@ struct DefinitionView: View {
                 }
                 .buttonStyle(.plain)
                 .help(history.isFavorite(record.headword) ? "Remove from favorites" : "Add to favorites")
+
+                Button {
+                    study.toggle(record.headword)
+                } label: {
+                    let studying = study.isStudying(record.headword)
+                    Image(systemName: studying ? "graduationcap.fill" : "graduationcap")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundStyle(studying ? Theme.accent : Theme.inkSecondary)
+                        .frame(width: 32, height: 32)
+                        .background(Circle().fill(Theme.chip))
+                }
+                .buttonStyle(.plain)
+                .help(study.isStudying(record.headword) ? "Remove from study" : "Add to study")
 
                 Button {
                     let pb = NSPasteboard.general
@@ -248,7 +272,7 @@ struct DefinitionView: View {
                 // Prose definition (monolingual entries, or bilingual residue).
                 if !sense.definition.isEmpty {
                     Text(sense.definition)
-                        .font(Theme.serif(16))
+                        .font(bodySerif(16))
                         .foregroundStyle(Theme.ink)
                         .lineSpacing(5)
                         .fixedSize(horizontal: false, vertical: true)
@@ -275,14 +299,14 @@ struct DefinitionView: View {
                 HStack(alignment: .firstTextBaseline, spacing: 10) {
                     // Target (CJK or otherwise) — primary visual weight.
                     Text(row.target)
-                        .font(Theme.serif(16, weight: .medium))
+                        .font(bodySerif(16, weight: .medium))
                         .foregroundStyle(Theme.ink)
                         .textSelection(.enabled)
                         .fixedSize(horizontal: false, vertical: true)
 
                     if let pron = row.pronunciation {
                         Text(pron)
-                            .font(Theme.ui(12, weight: .regular).italic())
+                            .font(bodyUI(12, weight: .regular).italic())
                             .foregroundStyle(Theme.inkSecondary)
                             .textSelection(.enabled)
                             .fixedSize(horizontal: false, vertical: true)
@@ -317,7 +341,7 @@ struct DefinitionView: View {
                 .font(Theme.ui(11, weight: .bold))
                 .foregroundStyle(Theme.accent.opacity(0.7))
             Text(text)
-                .font(Theme.serif(15).italic())
+                .font(bodySerif(15).italic())
                 .foregroundStyle(Theme.inkSecondary)
                 .lineSpacing(4)
                 .fixedSize(horizontal: false, vertical: true)
@@ -335,7 +359,7 @@ struct DefinitionView: View {
                 .tracking(1.2)
                 .foregroundStyle(Theme.inkTertiary)
             Text(section.text)
-                .font(Theme.serif(13.5))
+                .font(bodySerif(13.5))
                 .foregroundStyle(Theme.inkSecondary)
                 .lineSpacing(2)
                 .fixedSize(horizontal: false, vertical: true)
@@ -356,7 +380,7 @@ struct DefinitionView: View {
             VStack(alignment: .leading, spacing: 8) {
                 if let head = chunks.first, !head.isEmpty {
                     Text(head)
-                        .font(Theme.serif(16))
+                        .font(bodySerif(16))
                         .foregroundStyle(Theme.ink)
                         .lineSpacing(5)
                         .fixedSize(horizontal: false, vertical: true)

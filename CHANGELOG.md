@@ -4,6 +4,29 @@ All notable changes to Lexicon are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.3.0] — 2026-06-28
+
+### Added
+- **Dictionary preferences** — a Settings window (menu bar → Settings…) lists
+  every installed Apple dictionary so you can choose exactly which ones Lexicon
+  searches, and drag to reorder them (which also orders the definition tabs).
+- **Adjustable text size** — a slider in Settings scales the definition body
+  text from 85% to 150%, with a live preview.
+- **Study mode (spaced repetition)** — add words with the new graduation-cap
+  button, then review them from menu bar → Study…. Cards are scheduled with the
+  SM-2 (SuperMemo 2) algorithm — the same proven method behind Anki — grading
+  each review Again / Hard / Good / Easy and growing the interval as a word
+  sticks. Flashcards quiz both directions (recall the meaning, and guess the
+  word), and the menu shows how many cards are due.
+- **Bilingual study cards** — review cards show every enabled dictionary's
+  entry, so English and Chinese meanings appear together; example sentences are
+  hidden during "guess the word" so they don't give the answer away.
+- **Clear Recent** — a menu item clears recent lookups while keeping favorites.
+
+### Changed
+- The Settings and Study windows use the same warm "Reading Room" paper styling
+  as the main search panel.
+
 ## [1.2.0] — 2026-06-28
 
 ### Added

@@ -107,6 +107,14 @@ enum Theme {
         )
     }
 
+    /// AppKit twin of `paper`, for window background colors so rounded-corner
+    /// slivers blend instead of flashing white/black.
+    static let paperNSColor = NSColor(name: nil) { appearance in
+        let isDark = appearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
+        return isDark ? NSColor(srgbRed: 0x1B/255, green: 0x19/255, blue: 0x1D/255, alpha: 1)
+                      : NSColor(srgbRed: 0xFB/255, green: 0xF8/255, blue: 0xF2/255, alpha: 1)
+    }
+
     /// Serif font for the body of definitions — feels more "dictionary".
     static func serif(_ size: CGFloat, weight: Font.Weight = .regular) -> Font {
         .system(size: size, weight: weight, design: .serif)
@@ -130,5 +138,32 @@ enum Theme {
     /// Legacy alias — kept for any code that still asks for the old name.
     static func phonetic(_ size: CGFloat) -> Font {
         ipa(size)
+    }
+}
+
+// MARK: - User appearance settings
+
+/// User-adjustable appearance settings, persisted to `UserDefaults`.
+@MainActor
+final class AppSettings: ObservableObject {
+
+    static let shared = AppSettings()
+
+    /// Multiplier applied to the definition *body* text (1.0 = default). The
+    /// Preferences slider constrains it to `range`.
+    @Published var definitionFontScale: Double {
+        didSet { UserDefaults.standard.set(definitionFontScale, forKey: Self.kScale) }
+    }
+
+    /// Allowed scale range for the slider.
+    static let range: ClosedRange<Double> = 0.85...1.5
+
+    private static let kScale = "definitionFontScale"
+
+    private init() {
+        let saved = UserDefaults.standard.object(forKey: Self.kScale) as? Double
+        definitionFontScale = saved.map {
+            Swift.min(Self.range.upperBound, Swift.max(Self.range.lowerBound, $0))
+        } ?? 1.0
     }
 }
