@@ -28,7 +28,7 @@ final class MenuBarController {
                            accessibilityDescription: "Lexicon")
             image?.isTemplate = true
             button.image = image
-            button.toolTip = "Lexicon — Look up a word (⌃⌘D)"
+            button.toolTip = "Lexicon — Look up a word (\(AppSettings.shared.hotKey.displayString))"
             button.target = self
             button.action = #selector(statusItemClicked(_:))
             button.sendAction(on: [.leftMouseUp, .rightMouseUp])
@@ -50,7 +50,7 @@ final class MenuBarController {
 
     private func buildMenu() -> NSMenu {
         let menu = NSMenu()
-        menu.addItem(withTitle: "Look up… (⌃⌘D)",
+        menu.addItem(withTitle: "Look up… (\(AppSettings.shared.hotKey.displayString))",
                      action: #selector(openFromMenu),
                      keyEquivalent: "")
             .target = self

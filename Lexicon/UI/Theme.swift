@@ -115,6 +115,13 @@ enum Theme {
                       : NSColor(srgbRed: 0xFB/255, green: 0xF8/255, blue: 0xF2/255, alpha: 1)
     }
 
+    /// AppKit twin of `accent`, for AppKit-drawn controls (e.g. the hotkey recorder).
+    static let accentNSColor = NSColor(name: nil) { appearance in
+        let isDark = appearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
+        return isDark ? NSColor(srgbRed: 0xA9/255, green: 0x9B/255, blue: 0xFF/255, alpha: 1)
+                      : NSColor(srgbRed: 0x5A/255, green: 0x50/255, blue: 0xC8/255, alpha: 1)
+    }
+
     /// Serif font for the body of definitions — feels more "dictionary".
     static func serif(_ size: CGFloat, weight: Font.Weight = .regular) -> Font {
         .system(size: size, weight: weight, design: .serif)
@@ -160,10 +167,32 @@ final class AppSettings: ObservableObject {
 
     private static let kScale = "definitionFontScale"
 
+    /// The global hotkey that summons Lexicon. Editable in Settings.
+    @Published private(set) var hotKey: KeyCombo
+    /// Set by the app delegate so changing the hotkey re-registers it live.
+    var hotKeyChanged: ((KeyCombo) -> Void)?
+    private static let kHotKey = "globalHotKey"
+
     private init() {
         let saved = UserDefaults.standard.object(forKey: Self.kScale) as? Double
         definitionFontScale = saved.map {
             Swift.min(Self.range.upperBound, Swift.max(Self.range.lowerBound, $0))
         } ?? 1.0
+
+        if let data = UserDefaults.standard.data(forKey: Self.kHotKey),
+           let savedCombo = try? JSONDecoder().decode(KeyCombo.self, from: data) {
+            hotKey = savedCombo
+        } else {
+            hotKey = .controlCommandD
+        }
+    }
+
+    /// Persist a new global hotkey and notify the app delegate to re-register it.
+    func updateHotKey(_ combo: KeyCombo) {
+        hotKey = combo
+        if let data = try? JSONEncoder().encode(combo) {
+            UserDefaults.standard.set(data, forKey: Self.kHotKey)
+        }
+        hotKeyChanged?(combo)
     }
 }

@@ -24,7 +24,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         hotKey  = HotKeyManager { [weak self] in
             self?.togglePanel(usingSelection: true)
         }
-        hotKey.register(.controlCommandD)
+        // Register the user's saved hotkey, and re-register whenever it changes
+        // in Settings.
+        let settings = AppSettings.shared
+        settings.hotKeyChanged = { [weak self] combo in self?.hotKey.register(combo) }
+        hotKey.register(settings.hotKey)
     }
 
     func togglePanel(usingSelection: Bool = false) {

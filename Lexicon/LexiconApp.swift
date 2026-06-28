@@ -34,7 +34,11 @@ private struct PreferencesView: View {
             VStack(alignment: .leading, spacing: 0) {
                 header
                 hairline
-                appearanceSection.padding(16)
+                VStack(spacing: 12) {
+                    appearanceSection
+                    shortcutSection
+                }
+                .padding(16)
                 hairline
                 dictionariesHeader
                 dictionaryList
@@ -42,7 +46,7 @@ private struct PreferencesView: View {
                 footer
             }
         }
-        .frame(width: 460, height: 560)
+        .frame(width: 460, height: 620)
     }
 
     private var hairline: some View { Rectangle().fill(Theme.line).frame(height: 1) }
@@ -84,6 +88,38 @@ private struct PreferencesView: View {
                 .font(Theme.serif(16 * settings.definitionFontScale))
                 .foregroundStyle(Theme.ink)
                 .lineLimit(1).minimumScaleFactor(0.5)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(14)
+        .background(
+            RoundedRectangle(cornerRadius: 11, style: .continuous).fill(Theme.paperRaised)
+        )
+    }
+
+    // MARK: Global shortcut
+
+    private var shortcutSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("GLOBAL SHORTCUT")
+                .font(Theme.ui(10, weight: .semibold)).tracking(0.6)
+                .foregroundStyle(Theme.inkTertiary)
+            HStack(spacing: 10) {
+                Text("Summon Lexicon")
+                    .font(Theme.serif(15)).foregroundStyle(Theme.ink)
+                Spacer()
+                HotKeyRecorder(combo: settings.hotKey) { settings.updateHotKey($0) }
+                    .frame(width: 150, height: 30)
+                Button {
+                    settings.updateHotKey(.controlCommandD)
+                } label: {
+                    Image(systemName: "arrow.uturn.backward").font(.system(size: 12))
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(Theme.inkTertiary)
+                .help("Reset to ⌃⌘D")
+            }
+            Text("Click the field, then press your combination (must include ⌘, ⌃, or ⌥).")
+                .font(Theme.ui(11)).foregroundStyle(Theme.inkTertiary)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(14)
@@ -167,6 +203,21 @@ private struct PreferencesView: View {
                 .multilineTextAlignment(.center)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity).padding(30)
+    }
+}
+
+/// SwiftUI bridge to the AppKit `HotKeyRecorderView`.
+private struct HotKeyRecorder: NSViewRepresentable {
+    let combo: KeyCombo
+    let onChange: (KeyCombo) -> Void
+
+    func makeNSView(context: Context) -> HotKeyRecorderView {
+        let v = HotKeyRecorderView(combo: combo)
+        v.onChange = onChange
+        return v
+    }
+    func updateNSView(_ v: HotKeyRecorderView, context: Context) {
+        v.update(combo: combo, onChange: onChange)
     }
 }
 

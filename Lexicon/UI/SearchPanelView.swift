@@ -231,6 +231,7 @@ struct SearchPanelView: View {
 
     @ObservedObject var viewModel: SearchViewModel
     @ObservedObject private var history = HistoryStore.shared
+    @ObservedObject private var settings = AppSettings.shared
     var onClose: () -> Void
 
     private let cornerRadius: CGFloat = 18
@@ -292,7 +293,7 @@ struct SearchPanelView: View {
                 .frame(height: 34)
             if viewModel.query.isEmpty {
                 HStack(spacing: 4) {
-                    ForEach(["⌃", "⌘", "D"], id: \.self) { keycap($0) }
+                    ForEach(settings.hotKey.capTokens, id: \.self) { keycap($0) }
                 }
             } else {
                 Button {

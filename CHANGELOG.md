@@ -4,6 +4,14 @@ All notable changes to Lexicon are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.4.0] — 2026-06-28
+
+### Added
+- **Customizable global hotkey** — set your own shortcut to summon Lexicon in
+  Settings → Global shortcut. Click the field and press any combination (it must
+  include ⌘, ⌃, or ⌥); the change takes effect immediately, and the panel,
+  menu, and tooltip update to show it. A reset button restores the default ⌃⌘D.
+
 ## [1.3.0] — 2026-06-28
 
 ### Added
