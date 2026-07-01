@@ -10,8 +10,8 @@ options:
 settings:
   base:
     SWIFT_VERSION: "5.9"
-    MARKETING_VERSION: "1.4.0"
-    CURRENT_PROJECT_VERSION: "5"
+    MARKETING_VERSION: "1.5.0"
+    CURRENT_PROJECT_VERSION: "6"
     ENABLE_HARDENED_RUNTIME: YES
     CODE_SIGN_STYLE: Automatic
     CODE_SIGN_IDENTITY: "-"
@@ -31,8 +31,8 @@ targets:
       path: Lexicon/Info.plist
       properties:
         CFBundleDisplayName: Lexicon
-        CFBundleShortVersionString: "1.4.0"
-        CFBundleVersion: "5"
+        CFBundleShortVersionString: "1.5.0"
+        CFBundleVersion: "6"
         LSUIElement: true
         NSHumanReadableCopyright: "© 2026"
         NSAppleEventsUsageDescription: "Lexicon needs to read selected text from other apps so you can look up words instantly."

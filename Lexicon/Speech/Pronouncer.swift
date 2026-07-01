@@ -95,6 +95,14 @@ final class Pronouncer {
         requestToken &+= 1
         let token = requestToken
 
+        // Chinese: speak the characters with a Mandarin voice. The Oxford
+        // recordings are English-only, so skip the network entirely and don't
+        // let an English voice mangle the pinyin/characters.
+        if Self.isChineseText(trimmed) {
+            speakWithSynthesizer(trimmed, language: "zh-CN")
+            return
+        }
+
         let dialects = Self.dialectPreference(forBCP47: language)
 
         Task { [weak self] in
@@ -199,50 +207,69 @@ final class Pronouncer {
         if synth.isSpeaking { synth.stopSpeaking(at: .immediate) }
 
         let utterance = AVSpeechUtterance(string: word)
-        utterance.voice = bestVoice(for: language)
-            ?? bestVoice(for: "en-US")
+        // Prefer an installed voice for this language (or its family). For
+        // non-Chinese we fall back to English so we still say *something*; for
+        // Chinese we never fall back to English — that English-on-Chinese
+        // mangling is exactly the bug being fixed.
+        let isZh = Self.baseLanguage(language) == "zh"
+        utterance.voice = installedVoice(for: language)
             ?? AVSpeechSynthesisVoice(language: language)
+            ?? (isZh ? nil : bestVoice(for: "en-US"))
         utterance.rate = AVSpeechUtteranceDefaultSpeechRate * 0.92
         utterance.pitchMultiplier = 1.0
         utterance.preUtteranceDelay = 0
         synth.speak(utterance)
     }
 
-    /// Returns the highest-quality installed voice for `language`, or nil if
-    /// nothing matching is installed.
-    func bestVoice(for language: String) -> AVSpeechSynthesisVoice? {
-        if let cached = voiceCache[language] { return cached }
+    /// Best installed voice for `language`: an exact code match first, then any
+    /// voice in the same language family (e.g. zh-Hans / zh-TW for zh-CN). No
+    /// cross-language fallback.
+    func installedVoice(for language: String) -> AVSpeechSynthesisVoice? {
+        if let v = exactVoice(for: language) { return v }
+        let base = Self.baseLanguage(language)
+        let family = AVSpeechSynthesisVoice.speechVoices()
+            .filter { Self.baseLanguage($0.language) == base }
+        return Self.bestByQuality(family)
+    }
 
+    /// Highest-quality voice whose language code matches `language` exactly (cached).
+    private func exactVoice(for language: String) -> AVSpeechSynthesisVoice? {
+        if let cached = voiceCache[language] { return cached }
         let voices = AVSpeechSynthesisVoice.speechVoices()
             .filter { $0.language.caseInsensitiveCompare(language) == .orderedSame }
+        guard let pick = Self.bestByQuality(voices) else { return nil }
+        voiceCache[language] = pick
+        return pick
+    }
+
+    /// Back-compatible exact-match best voice (used as the English fallback).
+    func bestVoice(for language: String) -> AVSpeechSynthesisVoice? {
+        exactVoice(for: language)
+    }
+
+    private static func bestByQuality(_ voices: [AVSpeechSynthesisVoice]) -> AVSpeechSynthesisVoice? {
         guard !voices.isEmpty else { return nil }
-
-        // Pick by quality: premium > enhanced > default.
-        let qualityOrder: [AVSpeechSynthesisVoiceQuality] = [.premium, .enhanced, .default]
-        for q in qualityOrder {
-            let candidates = voices.filter { $0.quality == q }
-            if let pick = candidates.first {
-                voiceCache[language] = pick
-                return pick
-            }
+        let order: [AVSpeechSynthesisVoiceQuality] = [.premium, .enhanced, .default]
+        for q in order {
+            if let v = voices.first(where: { $0.quality == q }) { return v }
         }
-
-        voiceCache[language] = voices.first
         return voices.first
     }
 
-    /// Tells the UI whether the user has any non-default voice installed for
-    /// `language`. The view can use this to show a one-time "Tip: download a
-    /// Premium voice in System Settings for clearer audio" hint.
+    /// First two letters of a BCP-47 code, lowercased ("zh-CN" → "zh").
+    private static func baseLanguage(_ code: String) -> String {
+        String(code.prefix(2)).lowercased()
+    }
+
+    /// Tells the UI whether the user has a non-default voice for `language`.
     func hasHighQualityVoice(for language: String) -> Bool {
-        guard let v = bestVoice(for: language) else { return false }
+        guard let v = installedVoice(for: language) else { return false }
         return v.quality == .premium || v.quality == .enhanced
     }
 
-    /// True if there's *any* installed voice for `language`. Use this to
-    /// decide whether to show the dialect-specific speaker button at all.
+    /// True if there's *any* installed voice for `language` (or its family).
     func hasVoice(for language: String) -> Bool {
-        bestVoice(for: language) != nil
+        installedVoice(for: language) != nil
     }
 }
 
@@ -253,6 +280,25 @@ final class Pronouncer {
 // understands. Unknown / nil tags fall back to en-US.
 
 extension Pronouncer {
+
+    /// True if `text` contains Han characters — i.e. it should be spoken in
+    /// Chinese rather than read out by an English voice.
+    static func isChineseText(_ text: String) -> Bool {
+        text.unicodeScalars.contains { sc in
+            let v = sc.value
+            return (0x4E00...0x9FFF).contains(v) ||   // CJK Unified Ideographs
+                   (0x3400...0x4DBF).contains(v) ||   // Extension A
+                   (0x20000...0x2A6DF).contains(v) || // Extension B
+                   (0xF900...0xFAFF).contains(v)      // Compatibility Ideographs
+        }
+    }
+
+    /// Language to speak `text` in: Mandarin (zh-CN) when it's Chinese, otherwise
+    /// the English variant implied by `dialect`.
+    static func spokenLanguage(forText text: String, dialect: String?) -> String {
+        isChineseText(text) ? "zh-CN" : bcp47(forDialectTag: dialect)
+    }
+
     static func bcp47(forDialectTag tag: String?) -> String {
         guard let raw = tag?.uppercased(), !raw.isEmpty else { return "en-US" }
         switch raw {

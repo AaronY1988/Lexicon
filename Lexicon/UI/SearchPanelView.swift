@@ -259,12 +259,7 @@ struct SearchPanelView: View {
     /// reads at the very edges, but a high-opacity paper fill on top turns the
     /// surface into a calm reading page rather than cold glass.
     private var panelBackground: some View {
-        ZStack {
-            VisualEffectBackground(material: .hudWindow, blendingMode: .behindWindow)
-                .ignoresSafeArea()
-            Theme.paper.opacity(0.92)
-                .ignoresSafeArea()
-        }
+        AppBackground(theme: settings.theme)
     }
 
     /// A single warm hairline edge — no gradient, no glow.

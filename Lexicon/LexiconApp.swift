@@ -30,7 +30,7 @@ private struct PreferencesView: View {
 
     var body: some View {
         ZStack {
-            Theme.paper.ignoresSafeArea()
+            AppBackground(blur: false, theme: settings.theme)
             VStack(alignment: .leading, spacing: 0) {
                 header
                 hairline
@@ -72,6 +72,20 @@ private struct PreferencesView: View {
             Text("APPEARANCE")
                 .font(Theme.ui(10, weight: .semibold)).tracking(0.6)
                 .foregroundStyle(Theme.inkTertiary)
+            HStack {
+                Text("Theme")
+                    .font(Theme.serif(15)).foregroundStyle(Theme.ink)
+                Spacer()
+                Picker("", selection: $settings.theme) {
+                    ForEach(AppTheme.allCases, id: \.self) { t in
+                        Text(t.displayName).tag(t)
+                    }
+                }
+                .labelsHidden()
+                .pickerStyle(.segmented)
+                .frame(width: 232)
+            }
+            Rectangle().fill(Theme.line).frame(height: 1)
             HStack {
                 Text("Definition text size")
                     .font(Theme.serif(15)).foregroundStyle(Theme.ink)
@@ -238,6 +252,18 @@ enum LexiconWindows {
         win.center()
         return win
     }
+
+    /// Truly center `win` on its screen's visible area. Call *after*
+    /// `makeKeyAndOrderFront` so the window already has its final content size —
+    /// `NSWindow.center()` at creation time uses a not-yet-laid-out size and
+    /// lands off-center.
+    static func center(_ win: NSWindow) {
+        guard let screen = win.screen ?? NSScreen.main else { return }
+        let vf = screen.visibleFrame
+        let f = win.frame
+        win.setFrameOrigin(NSPoint(x: vf.minX + (vf.width - f.width) / 2,
+                                   y: vf.minY + (vf.height - f.height) / 2))
+    }
 }
 
 /// A plain AppKit window hosting the SwiftUI preferences. We use this instead of
@@ -253,8 +279,14 @@ final class PreferencesWindowController {
         if window == nil {
             window = LexiconWindows.paper(PreferencesView(), title: "Lexicon Settings")
         }
+        window?.backgroundColor = Theme.paperNSColor   // reflect the current theme
         NSApp.activate(ignoringOtherApps: true)
         window?.makeKeyAndOrderFront(nil)
+        // Center on the next runloop, once SwiftUI has given the window its
+        // final content size (centering synchronously uses a stale size).
+        if let w = window {
+            DispatchQueue.main.async { LexiconWindows.center(w) }
+        }
     }
 }
 
@@ -265,6 +297,7 @@ private enum StudyDirection { case recallMeaning, recallWord }
 private struct StudyView: View {
 
     @ObservedObject private var store = StudyStore.shared
+    @ObservedObject private var settings = AppSettings.shared
 
     @State private var queue: [StudyCard] = []
     @State private var revealed = false
@@ -278,7 +311,7 @@ private struct StudyView: View {
 
     var body: some View {
         ZStack {
-            Theme.paper.ignoresSafeArea()
+            AppBackground(blur: false, theme: settings.theme)
             VStack(spacing: 0) {
                 topBar
                 Rectangle().fill(Theme.line).frame(height: 1)
@@ -376,7 +409,7 @@ private struct StudyView: View {
                 Text("Show answer")
                     .font(Theme.ui(14, weight: .semibold)).foregroundStyle(.white)
                     .frame(maxWidth: .infinity).padding(.vertical, 12)
-                    .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(Theme.accent))
+                    .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(Theme.accentFill))
             }
             .buttonStyle(.plain)
             .padding(14)
@@ -546,5 +579,6 @@ final class StudyWindowController {
         window = win
         NSApp.activate(ignoringOtherApps: true)
         win.makeKeyAndOrderFront(nil)
+        DispatchQueue.main.async { LexiconWindows.center(win) }
     }
 }

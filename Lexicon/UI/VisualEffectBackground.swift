@@ -30,3 +30,38 @@ struct VisualEffectBackground: NSViewRepresentable {
         view.state = state
     }
 }
+
+/// The themed base background. Reading Room = warm paper over a whisper of the
+/// system blur; Luminous Glass = a vivid gradient (optionally over the blur).
+/// Re-evaluated whenever a parent that observes `AppSettings` re-renders.
+struct AppBackground: View {
+
+    /// Whether to layer the system frosted blur behind (true for the floating
+    /// panel; false for the titled auxiliary windows).
+    var blur: Bool = true
+    /// The current theme — passed in (not read from the global `Theme.active`)
+    /// so that changing it actually re-renders this view: SwiftUI only re-runs a
+    /// child's body when one of its inputs changes, and a global isn't an input.
+    var theme: AppTheme = .readingRoom
+
+    var body: some View {
+        ZStack {
+            if blur {
+                VisualEffectBackground(material: .hudWindow, blendingMode: .behindWindow)
+                    .ignoresSafeArea()
+            }
+            fill.ignoresSafeArea()
+        }
+    }
+
+    @ViewBuilder private var fill: some View {
+        switch theme {
+        case .readingRoom:
+            Theme.paper.opacity(blur ? 0.92 : 1)
+        case .luminousGlass:
+            LinearGradient(colors: Theme.glassGradient,
+                           startPoint: .topLeading, endPoint: .bottomTrailing)
+                .opacity(blur ? 0.92 : 1)
+        }
+    }
+}

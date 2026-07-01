@@ -78,14 +78,15 @@ struct DefinitionView: View {
                 // plays *something* sensible); otherwise en-US. Per-variant
                 // buttons live on the phonetic row below.
                 Button {
-                    let lang = Pronouncer.bcp47(forDialectTag: record.phonetics.first?.dialect)
+                    let lang = Pronouncer.spokenLanguage(forText: record.headword,
+                                                         dialect: record.phonetics.first?.dialect)
                     Pronouncer.shared.speak(record.headword, language: lang)
                 } label: {
                     Image(systemName: "speaker.wave.2.fill")
                         .font(.system(size: 13, weight: .semibold))
                         .foregroundStyle(.white)
                         .frame(width: 32, height: 32)
-                        .background(Circle().fill(Theme.accent))
+                        .background(Circle().fill(Theme.accentFill))
                 }
                 .buttonStyle(.plain)
                 .help("Pronounce")
@@ -173,7 +174,7 @@ struct DefinitionView: View {
 
     @ViewBuilder
     private func variantChip(_ v: PhoneticVariant) -> some View {
-        let lang = Pronouncer.bcp47(forDialectTag: v.dialect)
+        let lang = Pronouncer.spokenLanguage(forText: record.headword, dialect: v.dialect)
         HStack(spacing: 6) {
             if let dialect = v.dialect {
                 Text(dialect)

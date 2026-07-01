@@ -4,6 +4,20 @@ All notable changes to Lexicon are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.5.0] — 2026-07-01
+
+### Added
+- **Themes** — choose between the warm **Reading Room** and a vivid
+  **Luminous Glass** theme in Settings → Appearance. The whole app (search panel,
+  study cards, settings) re-tints instantly, and the choice is remembered.
+
+### Fixed
+- **Chinese pronunciation** — Chinese words are now spoken with a Mandarin voice
+  instead of an English voice reading the pinyin/characters. Text is detected by
+  script; English words are unaffected.
+- **Windows open centered** — the Study and Settings windows now appear centered
+  on screen instead of off to one side.
+
 ## [1.4.0] — 2026-06-28
 
 ### Added
